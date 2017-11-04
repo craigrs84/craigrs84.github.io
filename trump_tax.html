@@ -142,7 +142,7 @@
 			var exemptions = 0;
 			var credits = 1600 * childrenCredit;
 			var tempCredits = credits + 300 * (adults + childrenExempt - childrenCredit);
-			var refunds = 1000 * childrenCredit;
+			var refunds = 0; //TO DO
 			
 			if (income > childTaxPhaseOut) {
 				var reduction = Math.floor((income - childTaxPhaseOut) / 1000) * 50;
@@ -200,7 +200,7 @@
 			
 			var exemptions = 4050 * (adults + childrenExempt);
 			var credits = 1000 * childrenCredit;
-			var refunds = 1000 * childrenCredit;
+			var refunds = 0; //TO DO
 
 			if (income > childTaxPhaseOut) {
 				var reduction = Math.floor((income - childTaxPhaseOut) / 1000) * 50;
@@ -267,6 +267,8 @@
 				$('#savings').html(formatCurrency(savings)).css('color', savings >= 0 ? 'green' : 'red');
 				$('#tax2023').html(formatCurrency(trumpTax.tax2023));
 				$('#results').show();
+				
+				$('html, body').scrollTop($('#results').offset().top);
 			});
 		});
 		
