@@ -1,0 +1,384 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <title>Trump Tax Calculator</title>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta.2/css/bootstrap.min.css" integrity="sha384-PsH8R72JQ3SOdhVi3uxftmaW6Vc51MKb0q5P2rRUpPvrszuE4W1povHYgTpBfshb" crossorigin="anonymous">
+	
+	<style>
+		body { margin: 1.5em 0; }
+		label { font-weight: bold; }
+		.blue { color: #007bff; }
+		#results label { margin: 0; padding: 0; font-size: 90%; }
+		#results td div { margin-bottom: 5px; margin-top: -5px }
+		
+		input[type=number]::-webkit-outer-spin-button, input[type=number]::-webkit-inner-spin-button {
+			-webkit-appearance: none;
+			margin: 0;
+		}
+
+		input[type=number] {
+			-moz-appearance:textfield;
+		}
+	</style>
+
+	<!-- Optional JavaScript -->
+    <!-- jQuery first, then Popper.js, then Bootstrap JS -->
+	<script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.3/umd/popper.min.js" integrity="sha384-vFJXuSJphROIrBnz7yo7oB41mKfc8JzQZiCq4NCceLEaO4IHwicKwpJf9c9IpFgh" crossorigin="anonymous"></script>
+	<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta.2/js/bootstrap.min.js" integrity="sha384-alpBpkh1PFOepccYVYDB4do5UnbKysX5WZXm3XxPqe5iKTfUKjNkCk9SaVuEZflJ" crossorigin="anonymous"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/numeral.js/2.0.6/numeral.min.js"></script>
+	<script src="https://use.fontawesome.com/f7956d2446.js"></script>
+	
+	<script>
+		
+		/*
+		 * Trump
+		 */
+		var TRUMP_SINGLE_BRACKETS = [
+			{ min: 1,		max: 45000,		rate: .120 },
+			{ min: 45001,	max: 200000,	rate: .250 },
+			{ min: 200001,	max: 500000,	rate: .350 },
+			{ min: 500001,	max: Infinity,	rate: .396 }
+		];
+		
+		var TRUMP_HOUSEHOLD_BRACKETS = [
+			{ min: 1,		max: 67500,		rate: .120 },
+			{ min: 67501,	max: 230000,	rate: .250 },
+			{ min: 230001,	max: 500000,	rate: .350 },
+			{ min: 500001,	max: Infinity,	rate: .396 }
+		];
+		
+		var TRUMP_MARRIED_JOINT_BRACKETS = [
+			{ min: 1,		max: 90000,		rate: .120 },
+			{ min: 90001,	max: 260000,	rate: .250 },
+			{ min: 260001,	max: 1000000,	rate: .350 },
+			{ min: 1000001,	max: Infinity,	rate: .396 }
+		];
+		
+		var TRUMP_MARRIED_SEPARATE_BRACKETS = TRUMP_SINGLE_BRACKETS;
+		
+		/*
+		 * Current
+		 */
+		var CURRENT_SINGLE_BRACKETS = [
+			{ min: 1,		max: 9325,		rate: .100 },
+			{ min: 9326,	max: 37950,		rate: .150 },
+			{ min: 37951,	max: 91900,		rate: .250 },
+			{ min: 91901,	max: 191650,	rate: .280 },
+			{ min: 191651,	max: 416700,	rate: .330 },
+			{ min: 416701,	max: 418400,	rate: .350 },
+			{ min: 418401,	max: Infinity,	rate: .396 }
+		];
+		
+		var CURRENT_HOUSEHOLD_BRACKETS = [
+			{ min: 1,		max: 13350,		rate: .100 },
+			{ min: 13351,	max: 50800,		rate: .150 },
+			{ min: 50801,	max: 131200,	rate: .250 },
+			{ min: 131201,	max: 212500,	rate: .280 },
+			{ min: 212501,	max: 416700,	rate: .330 },
+			{ min: 416701,	max: 444550,	rate: .350 },
+			{ min: 444551,	max: Infinity,	rate: .396 }
+		];
+		
+		var CURRENT_MARRIED_JOINT_BRACKETS = [
+			{ min: 1,		max: 18650,		rate: .100 },
+			{ min: 18651,	max: 75900,		rate: .150 },
+			{ min: 75901,	max: 153100,	rate: .250 },
+			{ min: 153101,	max: 233350,	rate: .280 },
+			{ min: 233351,	max: 416700,	rate: .330 },
+			{ min: 416701,	max: 470700,	rate: .350 },
+			{ min: 470701,	max: Infinity,	rate: .396 }
+		];
+		
+		var CURRENT_MARRIED_SEPARATE_BRACKETS = [
+			{ min: 1,		max: 9325,		rate: .100 },
+			{ min: 9326,	max: 37950,		rate: .150 },
+			{ min: 37951,	max: 76550,		rate: .250 },
+			{ min: 76551,	max: 116675,	rate: .280 },
+			{ min: 116676,	max: 208350,	rate: .330 },
+			{ min: 208351,	max: 235350,	rate: .350 },
+			{ min: 235351,	max: Infinity,	rate: .396 }
+		];
+		
+	
+		function calcTrumpTax(income, status, childrenExempt, childrenCredit) {
+			var brackets = [];
+			var deductions = 0;
+			var adults = 0;
+			var childTaxPhaseOut;
+			
+			switch (status) {
+				case 'single':
+					brackets = TRUMP_SINGLE_BRACKETS;
+					deductions = 12000;
+					adults = 1;
+					childTaxPhaseOut = 75000;
+					break;
+				case 'head-household':
+					brackets = TRUMP_HOUSEHOLD_BRACKETS;
+					deductions = 18000;
+					adults = 1;
+					childTaxPhaseOut = 75000;
+					break;
+				case 'married-joint':
+					brackets = TRUMP_MARRIED_JOINT_BRACKETS;
+					deductions = 24000;
+					adults = 2;
+					childTaxPhaseOut = 150000;
+					break;
+				case 'married-separate':
+					brackets = TRUMP_MARRIED_SEPARATE_BRACKETS;
+					deductions = 12000;
+					adults = 1;
+					childTaxPhaseOut = 55000;
+					break;
+			}
+			
+			var exemptions = 0;
+			var credits = 1600 * childrenCredit;
+			var tempCredits = credits + 300 * (adults + childrenExempt - childrenCredit);
+			var refunds = 1000 * childrenCredit;
+			
+			if (income > childTaxPhaseOut) {
+				var reduction = Math.floor((income - childTaxPhaseOut) / 1000) * 50;
+				credits = Math.max(credits - reduction, 0);
+				tempCredits = Math.max(tempCredits - reduction, 0);
+				refunds = 0;
+			}
+
+			var appliedIncome = Math.max(income - deductions - exemptions, 0);
+			var tax, tax2023;
+			tax = tax2023 = calcMarginalTax(appliedIncome, brackets);
+			
+			var appliedCredits = Math.max(Math.min(tempCredits, tax), refunds);
+			tax -= appliedCredits;
+			
+			var appliedCredits2023 = Math.max(Math.min(credits, tax2023), refunds);
+			tax2023 -= appliedCredits2023;
+			
+			return { tax: tax, deductions: deductions, exemptions: exemptions, credits: appliedCredits, income: appliedIncome, tax2023: tax2023 };
+		}
+		
+		function calcCurrentTax(income, status, childrenExempt, childrenCredit) {
+		
+			var brackets = [];
+			var deductions = 0;
+			var adults = 0;
+			var childTaxPhaseOut;
+			
+			switch (status) {
+				case 'single':
+					brackets = CURRENT_SINGLE_BRACKETS;
+					deductions = 6350;
+					adults = 1;
+					childTaxPhaseOut = 75000;
+					break;
+				case 'head-household':
+					brackets = CURRENT_HOUSEHOLD_BRACKETS;
+					deductions = 9350;
+					adults = 1;
+					childTaxPhaseOut = 75000;
+					break;
+				case 'married-joint':
+					brackets = CURRENT_MARRIED_JOINT_BRACKETS;
+					deductions = 12700;
+					adults = 2;
+					childTaxPhaseOut = 110000;
+					break;
+				case 'married-separate':
+					brackets = CURRENT_MARRIED_SEPARATE_BRACKETS;
+					deductions = 6350;
+					adults = 1;
+					childTaxPhaseOut = 55000;
+					break;
+			}
+			
+			var exemptions = 4050 * (adults + childrenExempt);
+			var credits = 1000 * childrenCredit;
+			var refunds = 1000 * childrenCredit;
+
+			if (income > childTaxPhaseOut) {
+				var reduction = Math.floor((income - childTaxPhaseOut) / 1000) * 50;
+				credits = Math.max(credits - reduction, 0);
+				refunds = 0;
+			}
+			
+			var appliedIncome = Math.max(income - deductions - exemptions, 0);
+			var tax = calcMarginalTax(appliedIncome, brackets);
+			
+			var appliedCredits = Math.max(Math.min(credits, tax), refunds);
+			tax -= appliedCredits;
+			
+			return { tax: tax, deductions: deductions, exemptions: exemptions, credits: appliedCredits, income: appliedIncome };
+		}
+		
+		function calcMarginalTax(income, brackets) {
+			var taxed = 0;
+			$.each(brackets, function(i, item) {
+				if (income >= item.min) {
+					var amount = Math.min(income, item.max) - item.min + 1;
+					taxed += item.rate * amount;
+				}
+			});
+			return taxed;
+		}
+		
+		function formatCurrency(val) {
+			return numeral(val).format('$0,0.00');
+		}
+		
+		$(document).ready(function() {
+			$('[data-toggle="tooltip"]').tooltip(); 
+			$('#tax-form').submit(function(event) {
+				event.preventDefault();
+				
+				var income = parseInt($('#income').val(), 10);
+				var children1 = parseInt($('#children1').val(), 10);
+				var children2 = parseInt($('#children2').val(), 10);
+				var childrenExempt = children1 + children2;
+				var childrenCredit = children1;
+				var status = $('#filing_status').val();
+				
+				var trumpTax = calcTrumpTax(income, status, childrenExempt, childrenCredit);
+				var currentTax = calcCurrentTax(income, status, childrenExempt, childrenCredit);
+				var savings = currentTax.tax - trumpTax.tax;
+				
+				$('#trumpStartIncome').html(formatCurrency(income));
+				$('#trumpDeductions').html(formatCurrency(trumpTax.deductions));
+				$('#trumpExemptions').html(formatCurrency(trumpTax.exemptions));
+				$('#trumpFinalIncome').html(formatCurrency(trumpTax.income));
+				$('#trumpStartTaxes').html(formatCurrency(trumpTax.tax + trumpTax.credits));
+				$('#trumpCredits').html(formatCurrency(trumpTax.credits));
+				$('#trumpFinalTaxes').html(formatCurrency(trumpTax.tax) + ' *');
+				
+				$('#currentStartIncome').html(formatCurrency(income));
+				$('#currentDeductions').html(formatCurrency(currentTax.deductions));
+				$('#currentExemptions').html(formatCurrency(currentTax.exemptions));
+				$('#currentFinalIncome').html(formatCurrency(currentTax.income));
+				$('#currentStartTaxes').html(formatCurrency(currentTax.tax + currentTax.credits));
+				$('#currentCredits').html(formatCurrency(currentTax.credits));
+				$('#currentFinalTaxes').html(formatCurrency(currentTax.tax));
+				
+				$('#savings').html(formatCurrency(savings)).css('color', savings >= 0 ? 'green' : 'red');
+				$('#tax2023').html(formatCurrency(trumpTax.tax2023));
+				$('#results').show();
+			});
+		});
+		
+	</script>
+	
+  </head>
+  <body>
+
+	
+	<div class="container">
+	
+		<h1>Taxes: Current vs. Trump's</h1>
+		<p>Based on Nov. 2, 2017 tax proposal</p><br/>
+		
+		<div class="row">
+			<div class="col-md-6">
+				<form id="tax-form">
+				<div class="form-group">
+					<label>Filing Status</label>
+					<div>
+						<select style="max-width: 200px" class="form-control" name="filing_status" id="filing_status" required>
+							<option value="single" selected>Single</option>
+							<option value="head-household">Head of household</option>
+							<option value="married-joint">Married filing jointly</option>
+							<option value="married-separate">Married filing separately</option>
+						</select>
+					</div>
+				</div>				
+				<div class="form-group">
+					<label>Taxable Income</label> <a href="#" data-toggle="tooltip" data-placement="top" data-html="true" title="Typically gross income minus your 401k contributions, insurance premiums, etc."><i class="fa fa-question-circle blue" aria-hidden="true"></i></a>
+					<input style="max-width: 200px" class="form-control" type="text" name="income" id="income" value="75000" required autocomplete="off"></input>
+				</div>
+				<div class="form-group">
+					<label>Children, age 0 - 16</label>
+					<input style="max-width: 200px" class="form-control" type="number" name="children1" id="children1" value="0" required autocomplete="off"></input>
+				</div>
+				<div class="form-group">
+					<label>Children, age 17 - 18 PLUS<br/>Children in school, age 19 - 24</label>
+					<input style="max-width: 200px" class="form-control" type="number" name="children2" id="children2" value="0" required autocomplete="off"></input>
+				</div>
+				<div class="form-group" style="margin-top: 1.5em; margin-bottom: 2em">
+					<input class="btn btn-primary" type="submit" id="calculate" value="Calculate"/>
+				</div>
+				</form>
+			</div>
+			
+			<div id="results" class="jumbotron col-md-6" style="display: none; padding: 2rem">
+
+				<table style="width: 100%">
+					<tr>
+						<td style="width: 50%"><h4><u>Trump's Plan</u></h4><br/></td>
+						<td><h4><u>Current Plan</u></h4><br/></td>
+					</tr>
+					<tr>
+						<td style="width: 50%">
+							<label>Starting Taxable Income:</label>
+							<div id="trumpStartIncome"></div>
+
+							<label>Standard Deduction:</label>				
+							<div id="trumpDeductions"></div>
+							
+							<label>Personal Exemptions:</label>				
+							<div id="trumpExemptions"></div>
+							
+							<label>Final Taxable Income:</label>
+							<div id="trumpFinalIncome"></div>
+							
+							<label>Taxes (Before Credits):</label>
+							<div id="trumpStartTaxes"></div>
+							
+							<label>Credits:</label>
+							<div id="trumpCredits"></div>
+							
+							<label>Final Taxes:</label>
+							<div id="trumpFinalTaxes"></div>
+						</td>
+						<td>
+							<label>Starting Taxable Income:</label>
+							<div id="currentStartIncome"></div>
+
+							<label>Standard Deduction:</label>				
+							<div id="currentDeductions"></div>
+							
+							<label>Personal Exemptions:</label>				
+							<div id="currentExemptions"></div>
+							
+							<label>Final Taxable Income:</label>
+							<div id="currentFinalIncome"></div>
+							
+							<label>Taxes (Before Credits):</label>
+							<div id="currentStartTaxes"></div>
+							
+							<label>Credits:</label>
+							<div id="currentCredits"></div>
+							
+							<label>Final Taxes:</label>
+							<div id="currentFinalTaxes"></div>
+						</td>
+					</tr>
+				</table>
+				
+				<hr/>
+				<label>Savings under Trump's Plan:</label>
+				<div id="savings"></div>
+				<br/>
+				
+				<div style="font-size: 90%">
+					<i>* Taxes for Trump's plan will increase to <span id="tax2023"></span> starting in 2023.</span></i>
+				</div>
+			</div>
+		</div>
+	</div>	
+  </body>
+</html>
+
